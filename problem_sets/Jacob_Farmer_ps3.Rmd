@@ -106,7 +106,7 @@ summary(reg2)
 
 Does this estimate the true treatment effect?  If not, how is it biased?
 
-**Your answer here**
+**This does not estimate the true treatment effect, instead it reveals a biased estimate that is about 10 times larger than the true effect. This bias occurs because of the non-random selection of y0 > 75. The treatment group with a larger y0 will be guaranteed to have a larger treatment effect. Essentially, the untreated group no longer tells us what would have happened to the treated group absent treatment.**
 
 Now calculate the selection bias. This is the difference in average y0 from the treated group to the control group.
 
