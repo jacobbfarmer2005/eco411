@@ -483,7 +483,13 @@ summary(reg2)</code></pre>
 ## F-statistic: 9.538e+04 on 1 and 99998 DF,  p-value: &lt; 2.2e-16</code></pre>
 <p>Does this estimate the true treatment effect? If not, how is it
 biased?</p>
-<p><strong>Your answer here</strong></p>
+<p><strong>This does not estimate the true treatment effect, instead it
+reveals a biased estimate that is about 10 times larger than the true
+effect. This bias occurs because of the non-random selection of y0 &gt;
+75. The treatment group with a larger y0 will be guaranteed to have a
+larger treatment effect. Essentially, the untreated group no longer
+tells us what would have happened to the treated group absent
+treatment.</strong></p>
 <p>Now calculate the selection bias. This is the difference in average
 y0 from the treated group to the control group.</p>
 <pre class="r"><code>y0$treated &lt;- treated
@@ -497,7 +503,9 @@ selection_bias</code></pre>
 <pre><code>## [1] 45.24312</code></pre>
 <p>What do you notice about the difference between the average selection
 bias and the treatment effect estimate from the last regression?</p>
-<p><strong>Your answer here</strong></p>
+<p><strong>The average selection bias is the difference of the biased
+treatment effect estimate minus the unbiased treatment effect
+estimate.</strong></p>
 <p>Finally, do this again, but this time assign treatment only to those
 who have a treatment effect less than 3.</p>
 <pre class="r"><code>treated &lt;- y0$treatment_effect &lt; 3
@@ -524,7 +532,11 @@ summary(reg3)</code></pre>
 ## Multiple R-squared:  2.402e-05,  Adjusted R-squared:  1.402e-05 
 ## F-statistic: 2.402 on 1 and 99998 DF,  p-value: 0.1212</code></pre>
 <p>Does this return an unbiased estimate?</p>
-<p><strong>Your answer here</strong></p>
+<p><strong>No. The estimate for this regression is biased in a way that
+the treatment effect is too small to reflect a randomized population,
+which makes sense as this regression only uses a treatment group with a
+y0 guaranteed to be less than 3 (and that will be reflected in the
+treatment effect).</strong></p>
 </div>
 
 

@@ -123,7 +123,7 @@ selection_bias
 
 What do you notice about the difference between the average selection bias and the treatment effect estimate from the last regression?
 
-**Your answer here**
+**The average selection bias is the difference of the biased treatment effect estimate minus the unbiased treatment effect estimate.**
 
 Finally, do this again, but this time assign treatment only to those who have a treatment effect less than 3. 
 
@@ -137,4 +137,4 @@ summary(reg3)
 
 Does this return an unbiased estimate?
 
-**Your answer here**
+**No. The estimate for this regression is biased in a way that the treatment effect is too small to reflect a randomized population, which makes sense as this regression only uses a treatment group with a y0 guaranteed to be less than 3 (and that will be reflected in the treatment effect).**
