@@ -5,9 +5,7 @@ date: "Due October 9, 2025"
 output: html_document
 ---
 
-In this problem set we are going to replicate one of the main findings from Bertrand, Duflo
-and Mullainathan (2004).  We will do this in a series of steps that we will then
-put together into one big simulation at the end.
+In this problem set we are going to replicate one of the main findings from Bertrand, Duflo and Mullainathan (2004).  We will do this in a series of steps that we will then put together into one big simulation at the end.
 
 First things first, we will need the *tidyverse* and *plm* packages, so use this 
 code chunk to install (if needed) and load them
@@ -62,7 +60,9 @@ run the chunk and have R spit out a new intervention_year, which should bounce a
 from 1980-1999.
 
 ```{r, echo=TRUE}
-#your code here
+intervention_year = 
+  sample(1980:1999, size = 1)
+intervention_year
 ```
 
 
@@ -75,6 +75,9 @@ called 'state_list'.
 #create list of states to assign treatment to
 state_list <- as.data.frame(unique(bertrand_data$state))
 colnames(state_list) <- c("state")
+
+# selected_states =
+  # sample(state_list$state, size = 25)
 ```
 
 
@@ -85,8 +88,7 @@ do this, but I suggest the following four steps:
 
 2 - Sort the data based on this new variable using *arrange()*
 
-3 - Create another new variable that is a count of the states as they are ordered using *row_number()*.  Call this 
-variable **n**
+3 - Create another new variable that is a count of the states as they are ordered using *row_number()*.  Call this variable **n**
 
 4 - Create a treatment variable that is 1 for all observations with **n** less than
 or equal to 25
@@ -95,7 +97,13 @@ Do this below. Since we are using tidyverse, you can combine all four steps usin
 the %>% piping
 
 ```{r, echo=TRUE}
-#your code here
+state_list = state_list |> 
+  mutate(random = runif(n(), min = 0, max = 1)) |> 
+  arrange(random) |> 
+  mutate(n = row_number(), 
+         treatment = if_else(n <= 25, 1, 0))
+
+state_list
 ```
 
 Now we have our 25 randomly selected states.  Next, we need to merge this with our 
@@ -103,7 +111,8 @@ original dataset.  Do this using the *merge()* command, and call this new datase
 **bertrand_treat**. Merge the two datasets by the "state" variable
 
 ```{r, echo=TRUE}
-#your code here
+bertrand_treat = 
+  merge(bertrand_data, state_list, by = "state", all.x = TRUE)
 ```
 
 Now, create a new variable called **year_treat** that is 1 if the year in the dataset 
@@ -115,7 +124,12 @@ Finally, create a variable called **treated**, which is the product of **year_tr
 Create these two variables in the code chunk below
 
 ```{r, echo=TRUE}
-#your code here
+bertrand_treat = bertrand_treat |> 
+  mutate(year_treat = if_else(year >= intervention_year, 1, 0),
+         treated = year_treat*treatment
+         )
+
+bertrand_treat
 ```
 
 Ok, we have now set up our regression.  Since we have not covered DiD yet, I am 
@@ -142,7 +156,8 @@ Do this below.  It is simple to do, but it may take some googling if you have no
 worked with matrices in R.
 
 ```{r, echo = TRUE}
-
+p_value = summary(plm1)$coefficients[4]
+p_value
 ```
 
 
@@ -157,21 +172,41 @@ df <- data.frame(matrix(ncol=2,nrow=1000))
 ```
 
 Next, copy all of your code from each code chunk above after the brackets below, starting
-with the chunk where you loaded the data and ending with the chunk that stores the p-value
-from the regression.  Make sure you do this in order.  When you are done, you should be 
-able to run the new (large) code chunk and it will run through our specification 
-1,000 times and store all of the p-values.
+with the chunk where you loaded the data and ending with the chunk that stores the p-value from the regression.  Make sure you do this in order. When you are done, you should be able to run the new (large) code chunk and it will run through our specification 1,000 times and store all of the p-values.
 
 If you have done this correctly, it will take a little bit of time to run, but shouldn't
 take more than a minute or two.
 
 ```{r}
-for (i in 1:1000) {
+bertrand_data <- haven::read_dta("../data/bertrand_04_collapsed.dta")
 
-  #copy and paste your code here
+for (i in 1:1000) {
   
+  intervention_year = 
+    sample(1980:1999, size = 1)
   
+  state_list <- as.data.frame(unique(bertrand_data$state))
+  colnames(state_list) <- c("state")
   
+  state_list = state_list |> 
+    mutate(random = runif(n(), min = 0, max = 1)) |> 
+    arrange(random) |> 
+    mutate(n = row_number(), 
+           treatment = if_else(n <= 25, 1, 0))
+  
+  bertrand_treat = 
+    merge(bertrand_data, state_list, by = "state", all.x = TRUE)
+  
+  bertrand_treat = bertrand_treat |> 
+    mutate(year_treat = if_else(year >= intervention_year, 1, 0),
+           treated = year_treat*treatment)
+  
+  plm1 <- plm(uearnwk ~ treated, 
+              data = bertrand_treat, index = c('state', 'year'), model = 'within',
+              effect = 'twoways')
+  
+  p_value = summary(plm1)$coefficients[4]
+
   df[i,1] <- i
   df[i,2] <- p_value
 }  
@@ -181,10 +216,10 @@ Lastly, write some code to see how often our regression rejected the null hypoth
 of no treatment effect at the 5% significance level.
 
 ```{r}
-#your code here
+table(df[, 2] < 0.05)
+# True is the number of null rejections
 ```
 
 Is this more or less than you would expect?
 
-
-**Answer here**
+**Your Answer Here**
