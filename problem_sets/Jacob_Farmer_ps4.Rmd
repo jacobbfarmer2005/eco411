@@ -218,8 +218,9 @@ of no treatment effect at the 5% significance level.
 ```{r}
 table(df[, 2] < 0.05)
 # True is the number of null rejections
+mean(df[, 2] < 0.05) *100   # percent of simulations that rejected the null
 ```
 
 Is this more or less than you would expect?
 
-**Your Answer Here**
+**We rejected the null in 411 out of 1000 simulations, 41.1% of the time, which is far more than expected at a 5% significance level. Because treatment is randomly assigned, at this 5% significance level we should reject the null about 5% of the time. Because we are seeing 41.1% rejection, there is some correlation causing understated standard errors, leading to more rejections of the null than expected.**
