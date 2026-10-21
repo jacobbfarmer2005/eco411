@@ -162,7 +162,27 @@ Finally, plot the coefficients using the code from the 10_did slides as a templa
 ```{r,echo=TRUE, message=FALSE, warning=FALSE}
 es_coefs <- summary(reg_event_study)$coefficients
 
+es_df <- data.frame(
+  sd   = es_coefs[1:7, 2],
+  mean = es_coefs[1:7, 1],
+  year = c(2022, 2023, 2024, 2026, 2027, 2028, 2029))
 
+# Add a zero for 2025 (the omitted reference year)
+es_df[8, 1:2] <- 0
+es_df[8, 3]   <- 2025
+
+es_df <- es_df |> 
+  arrange(year) |> 
+  mutate(lb = mean - (1.96 * sd),
+         ub = mean + (1.96 * sd))
+
+ggplot(aes(x = year, y = mean), data = es_df) + 
+  geom_point() +
+  geom_hline(yintercept = 0) + 
+  geom_vline(xintercept = 2025.5, linetype = "dashed") +
+  ylab("Coefficient") + xlab("Year") +
+  geom_errorbar(aes(ymin = lb, ymax = ub), width = 0.2,
+                position = position_dodge(0.05))
 ```
 
 Collapse the treated and control group to the state-year level and plot them both over time to see what's going on here.  Add a vertical line between 2025-26 by adding the line:
@@ -172,7 +192,19 @@ Collapse the treated and control group to the state-year level and plot them bot
 in ggplot
 
 ```{r,echo=TRUE, message=FALSE, warning=FALSE}
-#your code here
+trend_data <- ps_data |> 
+  group_by(state, year, Treat_s) |> 
+  summarise(Y = mean(Y, na.rm = TRUE), .groups = "drop") |> 
+  group_by(Treat_s, year) |> 
+  summarise(mean_Y = mean(Y, na.rm = TRUE), .groups = "drop") |> 
+  mutate(group = if_else(Treat_s, "Ohio (Treated)", "Other States (Control)"))
+
+ggplot(aes(x = year, y = mean_Y, color = group), data = trend_data) +
+  geom_line() +
+  geom_point() +
+  geom_vline(xintercept = 2025.5) +
+  ylab("Mean Y") + xlab("Year") +
+  labs(color = "Group")
 ```
 
 What conclusions are you going to take the the governor?
