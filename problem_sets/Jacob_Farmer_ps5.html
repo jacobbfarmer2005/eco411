@@ -387,19 +387,28 @@ Treat_s*Post_t\)</span></p>
 
 ps_data &lt;- ps_data |&gt; 
   mutate(
-    Treat_s = ifelse(state == 1, 1, 0),
-    Post_t = ifelse(year &gt;= 2026, 1, 0),
-  )</code></pre>
+    Treat_s = ifelse(state == 1, TRUE, FALSE),
+    Post_t = ifelse(year &gt;= 2026, TRUE, FALSE),
+  )
+
+glimpse(ps_data)</code></pre>
+<pre><code>## Rows: 100,000
+## Columns: 5
+## $ Y       &lt;dbl&gt; 13.199815, 8.795446, 12.927355, 10.813655, 9.946388, 9.468094,…
+## $ year    &lt;int&gt; 2024, 2024, 2026, 2029, 2022, 2024, 2029, 2023, 2022, 2029, 20…
+## $ state   &lt;int&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,…
+## $ Treat_s &lt;lgl&gt; TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TR…
+## $ Post_t  &lt;lgl&gt; FALSE, FALSE, TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, FALSE, TR…</code></pre>
 <p>Now run the specification and display the coefficient estimates</p>
 <pre class="r"><code>did_specification &lt;- lm(Y ~ Treat_s + Post_t + (Treat_s*Post_t),
                         data = ps_data)
 
 summary(did_specification)$coefficients</code></pre>
-<pre><code>##                  Estimate  Std. Error     t value      Pr(&gt;|t|)
-## (Intercept)    10.8486527 0.008881264 1221.521309  0.000000e+00
-## Treat_s        -0.8892225 0.039774048  -22.356852 1.934887e-110
-## Post_t          1.9884169 0.012588034  157.960875  0.000000e+00
-## Treat_s:Post_t -0.4014360 0.056802087   -7.067275  1.590333e-12</code></pre>
+<pre><code>##                          Estimate  Std. Error     t value      Pr(&gt;|t|)
+## (Intercept)            10.8486527 0.008881264 1221.521309  0.000000e+00
+## Treat_sTRUE            -0.8892225 0.039774048  -22.356852 1.934887e-110
+## Post_tTRUE              1.9884169 0.012588034  157.960875  0.000000e+00
+## Treat_sTRUE:Post_tTRUE -0.4014360 0.056802087   -7.067275  1.590333e-12</code></pre>
 <p>Now, run the Two-Way Fixed Effects (TWFE version):</p>
 <p><span class="math inline">\(Y_{st} = \gamma_t + \delta_s +
 Treat_s*Post_t\)</span></p>
@@ -414,31 +423,105 @@ state and year fixed effects.</p>
                           effect = &quot;twoways&quot;)
 
 summary(twfe_specification)$coefficients</code></pre>
-<pre><code>##                  Estimate Std. Error   t-value     Pr(&gt;|t|)
-## Treat_s:Post_t -0.4081672 0.04381179 -9.316376 1.227224e-20</code></pre>
+<pre><code>##                          Estimate Std. Error   t-value     Pr(&gt;|t|)
+## Treat_sTRUE:Post_tTRUE -0.4081672 0.04381179 -9.316376 1.227224e-20</code></pre>
 <p>Are the coefficients different? Are they about the same? Why are they
 not identical?</p>
 <p><strong>Your answer here</strong></p>
 <p>You want to be sure the DiD worked correctly, so manually calculate
 the DiD using the four conditional means</p>
-<pre class="r"><code>#your code here</code></pre>
+<pre class="r"><code>did_manual &lt;- ps_data |&gt; 
+  group_by(Treat_s, Post_t) |&gt; 
+  summarize(mean_Y = mean(Y, na.rm = TRUE), .groups = &quot;drop&quot;)
+
+did_manual</code></pre>
+<pre><code>## # A tibble: 4 × 3
+##   Treat_s Post_t mean_Y
+##   &lt;lgl&gt;   &lt;lgl&gt;   &lt;dbl&gt;
+## 1 FALSE   FALSE   10.8 
+## 2 FALSE   TRUE    12.8 
+## 3 TRUE    FALSE    9.96
+## 4 TRUE    TRUE    11.5</code></pre>
+<pre class="r"><code>treat_post   &lt;- did_manual$mean_Y[did_manual$Treat_s  &amp; did_manual$Post_t]
+treat_pre    &lt;- did_manual$mean_Y[did_manual$Treat_s  &amp; !did_manual$Post_t]
+control_post &lt;- did_manual$mean_Y[!did_manual$Treat_s &amp; did_manual$Post_t]
+control_pre  &lt;- did_manual$mean_Y[!did_manual$Treat_s &amp; !did_manual$Post_t]
+
+# DiD = treat_diff - control_diff
+treat_diff = (treat_post - treat_pre)
+control_diff = (control_post - control_pre)
+did_estimate &lt;- treat_diff - control_diff
+
+did_estimate</code></pre>
+<pre><code>## [1] -0.401436</code></pre>
 <p>Let’s remember Bertrand et al (2004). They were concerned about
 having too many correlated observations within clusters. Calculate the
 mean for each state-by-year combination and save as a new object. Then
 run the TWFE regression again.</p>
-<pre class="r"><code>#your code here</code></pre>
+<pre class="r"><code>state_year_data &lt;- ps_data |&gt; 
+  group_by(state, year) |&gt; 
+  summarise(Y = mean(Y, na.rm = TRUE)) |&gt; 
+  mutate(
+    Treat_s = if_else(state == 1,TRUE,FALSE), 
+    Post_t = if_else(year &gt;= 2026,TRUE,FALSE),
+    .groups = &quot;drop_last&quot;
+  )
+
+glimpse(state_year_data)</code></pre>
+<pre><code>## Rows: 160
+## Columns: 6
+## Groups: state [20]
+## $ state   &lt;int&gt; 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3,…
+## $ year    &lt;int&gt; 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2022, 2023, 20…
+## $ Y       &lt;dbl&gt; 9.325088, 9.807232, 10.328403, 10.412965, 10.832620, 11.341772…
+## $ Treat_s &lt;lgl&gt; TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, …
+## $ Post_t  &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, FALSE, FAL…
+## $ .groups &lt;chr&gt; &quot;drop_last&quot;, &quot;drop_last&quot;, &quot;drop_last&quot;, &quot;drop_last&quot;, &quot;drop_last…</code></pre>
+<pre class="r"><code>twfe2 &lt;- plm(Y ~ Treat_s + Post_t + (Treat_s*Post_t),
+             data = state_year_data,
+             index = c(&quot;state&quot;, &quot;year&quot;),
+             model = &quot;within&quot;,
+             effect = &quot;twoways&quot;)
+
+summary(twfe2)$coefficients</code></pre>
+<pre><code>##                          Estimate Std. Error   t-value     Pr(&gt;|t|)
+## Treat_sTRUE:Post_tTRUE -0.4051941 0.04810707 -8.422754 5.425576e-14</code></pre>
 <p>Lastly, you want to be able to trace the treatment effect over time.
 Now you want to run this specification as an <em>event-study</em>.
 First, create the leads and lags for your regression below. Start with
 the original, uncollapsed version of the data. Since the policies roll
 out in early 2026, you should use 2025 as your comparison year.</p>
-<pre class="r"><code>#your code here</code></pre>
+<pre class="r"><code>ps_event_study &lt;- ps_data |&gt; 
+  mutate(
+    lead3 = year == 2022 &amp; Treat_s == TRUE,
+    lead2 = year == 2023 &amp; Treat_s == TRUE,
+    lead1 = year == 2024 &amp; Treat_s == TRUE,
+    lag1  = year == 2026 &amp; Treat_s == TRUE,
+    lag2  = year == 2027 &amp; Treat_s == TRUE,
+    lag3  = year == 2028 &amp; Treat_s == TRUE,
+    lag4  = year == 2029 &amp; Treat_s == TRUE
+  )</code></pre>
 <p>Now, run the regression using TWFE.</p>
-<pre class="r"><code>#your code here</code></pre>
+<pre class="r"><code>reg_event_study &lt;- plm(Y ~ lead3 + lead2 + lead1 + lag1 + lag2 + lag3 + lag4,
+                       data = ps_event_study,
+                       index = c(&quot;state&quot;, &quot;year&quot;),
+                       model = &quot;within&quot;,
+                       effect = &quot;twoways&quot;)
+
+summary(reg_event_study)$coefficients</code></pre>
+<pre><code>##              Estimate Std. Error    t-value     Pr(&gt;|t|)
+## lead3TRUE  0.43776456 0.08778557  4.9867487 6.150639e-07
+## lead2TRUE  0.38911700 0.08644123  4.5015210 6.754494e-06
+## lead1TRUE  0.42493522 0.08810570  4.8230161 1.416112e-06
+## lag1TRUE  -0.05965180 0.08794974 -0.6782488 4.976156e-01
+## lag2TRUE  -0.04897946 0.08934890 -0.5481820 5.835682e-01
+## lag3TRUE  -0.09649020 0.08758392 -1.1016886 2.705997e-01
+## lag4TRUE  -0.16188672 0.08950697 -1.8086492 7.050852e-02</code></pre>
 <p>Does this look like you expected? Any concerns?</p>
+<p><strong><em>Answer Here</em></strong></p>
 <p>Finally, plot the coefficients using the code from the 10_did slides
 as a template</p>
-<pre class="r"><code>#your code here</code></pre>
+<pre class="r"><code>es_coefs &lt;- summary(reg_event_study)$coefficients</code></pre>
 <p>Collapse the treated and control group to the state-year level and
 plot them both over time to see what’s going on here. Add a vertical
 line between 2025-26 by adding the line:</p>

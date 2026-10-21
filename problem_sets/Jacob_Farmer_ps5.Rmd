@@ -37,9 +37,11 @@ ps_data <- readRDS("../data/ps5_did.rds")
 
 ps_data <- ps_data |> 
   mutate(
-    Treat_s = ifelse(state == 1, 1, 0),
-    Post_t = ifelse(year >= 2026, 1, 0),
+    Treat_s = ifelse(state == 1, TRUE, FALSE),
+    Post_t = ifelse(year >= 2026, TRUE, FALSE),
   )
+
+glimpse(ps_data)
 ```
 
 Now run the specification and display the coefficient estimates
@@ -77,14 +79,48 @@ Are the coefficients different?  Are they about the same? Why are they not ident
 You want to be sure the DiD worked correctly, so manually calculate the DiD using the four conditional means
 
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
-#your code here
+did_manual <- ps_data |> 
+  group_by(Treat_s, Post_t) |> 
+  summarize(mean_Y = mean(Y, na.rm = TRUE), .groups = "drop")
+
+did_manual
+
+treat_post   <- did_manual$mean_Y[did_manual$Treat_s  & did_manual$Post_t]
+treat_pre    <- did_manual$mean_Y[did_manual$Treat_s  & !did_manual$Post_t]
+control_post <- did_manual$mean_Y[!did_manual$Treat_s & did_manual$Post_t]
+control_pre  <- did_manual$mean_Y[!did_manual$Treat_s & !did_manual$Post_t]
+
+# DiD = treat_diff - control_diff
+treat_diff = (treat_post - treat_pre)
+control_diff = (control_post - control_pre)
+did_estimate <- treat_diff - control_diff
+
+did_estimate
 ```
 
 Let's remember Bertrand et al (2004).  They were concerned about 
 having too many correlated observations within clusters.  Calculate the mean for each state-by-year combination and save as a new object. Then run the TWFE regression again.  
 
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
-#your code here
+state_year_data <- ps_data |> 
+  group_by(state, year) |> 
+  summarise(Y = mean(Y, na.rm = TRUE)) |> 
+  mutate(
+    Treat_s = if_else(state == 1,TRUE,FALSE), 
+    Post_t = if_else(year >= 2026,TRUE,FALSE),
+    .groups = "drop_last"
+  )
+
+glimpse(state_year_data)
+
+twfe2 <- plm(Y ~ Treat_s + Post_t + (Treat_s*Post_t),
+             data = state_year_data,
+             index = c("state", "year"),
+             model = "within",
+             effect = "twoways")
+
+summary(twfe2)$coefficients
+
 ```
 
 Lastly, you want to be able to trace the treatment effect over time.  Now you want to run this
@@ -93,21 +129,40 @@ Start with the original, uncollapsed version of the data. Since the policies rol
 2026, you should use 2025 as your comparison year.
 
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
-#your code here
+ps_event_study <- ps_data |> 
+  mutate(
+    lead3 = year == 2022 & Treat_s == TRUE,
+    lead2 = year == 2023 & Treat_s == TRUE,
+    lead1 = year == 2024 & Treat_s == TRUE,
+    lag1  = year == 2026 & Treat_s == TRUE,
+    lag2  = year == 2027 & Treat_s == TRUE,
+    lag3  = year == 2028 & Treat_s == TRUE,
+    lag4  = year == 2029 & Treat_s == TRUE
+  )
 ```
 
 Now, run the regression using TWFE. 
 
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
-#your code here
+reg_event_study <- plm(Y ~ lead3 + lead2 + lead1 + lag1 + lag2 + lag3 + lag4,
+                       data = ps_event_study,
+                       index = c("state", "year"),
+                       model = "within",
+                       effect = "twoways")
+
+summary(reg_event_study)$coefficients
 ```
 
 Does this look like you expected?  Any concerns?
 
+***Answer Here***
+
 Finally, plot the coefficients using the code from the 10_did slides as a template
 
 ```{r,echo=TRUE, message=FALSE, warning=FALSE}
-#your code here
+es_coefs <- summary(reg_event_study)$coefficients
+
+
 ```
 
 Collapse the treated and control group to the state-year level and plot them both over time to see what's going on here.  Add a vertical line between 2025-26 by adding the line:
