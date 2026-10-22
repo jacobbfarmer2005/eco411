@@ -74,7 +74,7 @@ summary(twfe_specification)$coefficients
 
 Are the coefficients different?  Are they about the same? Why are they not identical?
 
-**Your answer here**
+**The coefficients are very similar but slightly different (-0.4014360 vs. -0.408167). This is because the TWFE model incorporates year and state fixed effects, so it removes state and time differences that can appear in the DiD model. This is mostly seen through the different number of states observed across time, which leads to our difference in coefficient estimates here.**
 
 You want to be sure the DiD worked correctly, so manually calculate the DiD using the four conditional means
 
@@ -155,7 +155,7 @@ summary(reg_event_study)$coefficients
 
 Does this look like you expected?  Any concerns?
 
-***Answer Here***
+***This does not look like it should. The leads are all about +0.4 and highly significant, meaning that they Ohio was significantly different from the control states leading to 2025. The lags are also much closer to zero and not statistically significant, so after the policy, Ohio did not meaningfully change relative to the control states.***
 
 Finally, plot the coefficients using the code from the 10_did slides as a template
 
@@ -209,4 +209,4 @@ ggplot(aes(x = year, y = mean_Y, color = group), data = trend_data) +
 
 What conclusions are you going to take the the governor?
 
-**Answer Here**
+**I would tell the governor that this data does not necessarily show a reduction in crime from the implementation of the policies. The event study table and the chart reflect a change in Ohio occurring about 2024 before the implementation of the governor's policies, then after the change Ohio's crime mostly tracks with the control states. The 2024 change could have come from changed behavior due to anticipation of the governor's policies, or it could have come from an unrelated policy or event outside the scope and context of the data. It might be worth the governor's time to investigate the cause of the crime reduction in 2024.**
